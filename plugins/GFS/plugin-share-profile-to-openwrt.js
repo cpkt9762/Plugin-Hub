@@ -1,6 +1,3 @@
-const JS_FILE = 'https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.js'
-const PATH = 'data/third/share-profile-to-openwrt'
-
 const onRun = async () => {
   const store = Plugins.useProfilesStore()
   if (store.profiles.length === 0) {
@@ -23,8 +20,6 @@ const onRun = async () => {
 }
 
 const Share = async (profile) => {
-  await loadDependence()
-  
   await transformLocalRuleset(profile)
 
   const type = await Plugins.picker.single(
@@ -66,12 +61,6 @@ const Share = async (profile) => {
   }
 
   const ips = await getIPAddress()
-  const urls = await Promise.all(
-    ips.map((ip) => {
-      const url = `http://${ip}:${Plugin.Port}`
-      return getQRCode(url, url)
-    })
-  )
 
   const { close } = await Plugins.StartServer('0.0.0.0:' + Plugin.Port, Plugin.id, async (req, res) => {
     res.end(200, { 'Content-Type': 'application/json; charset=utf-8' }, JSON.stringify(config, null, 2))
@@ -84,22 +73,11 @@ const Share = async (profile) => {
     '```bash\n' +
     `curl -o /etc/sing-box/config.json ${ips[0] ? `http://${ips[0]}:${Plugin.Port}` : 'URL'}\n` +
     '```\n\n' +
-    '|分享链接|二维码|\n|-|-|\n' +
-    urls.map((url) => `|${url.url}|![](${url.qrcode})|`).join('\n'),
+    '**可用链接：**\n' +
+    ips.map((ip) => `- http://${ip}:${Plugin.Port}`).join('\n'),
     { type: 'markdown' }
   )
   close()
-}
-
-const onInstall = async () => {
-  await Plugins.Download(JS_FILE, PATH + '/qrcode.min.js')
-  await Plugins.message.success('安装成功')
-  return 0
-}
-
-const onUninstall = async () => {
-  await Plugins.RemoveFile(PATH)
-  return 0
 }
 
 function validateRequiredTags(config) {
@@ -431,34 +409,6 @@ const _adaptToLegacy = (config) => {
       rule.outbound = 'block'
     }
     rule.action = undefined
-  })
-}
-
-function loadDependence() {
-  return new Promise(async (resolve, reject) => {
-    if (window.QRCode) {
-      resolve()
-      return
-    }
-    try {
-      const text = await Plugins.ReadFile(PATH + '/qrcode.min.js')
-      const script = document.createElement('script')
-      script.id = Plugin.id
-      script.text = text
-      document.body.appendChild(script)
-      resolve()
-    } catch (error) {
-      console.error(error)
-      reject('二维码生成依赖安装失败，请重新安装本插件')
-    }
-  })
-}
-
-function getQRCode(rawUrl, rawStr) {
-  return new Promise((resolve) => {
-    QRCode.toDataURL(rawStr, async (err, url) => {
-      resolve({ url: rawUrl, qrcode: url })
-    })
   })
 }
 

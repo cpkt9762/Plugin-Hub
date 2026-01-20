@@ -207,7 +207,7 @@
       }
     ],
     "disabled": false,
-    "install": true,
+    "install": false,
     "installed": false
   }
 ]
